@@ -1,0 +1,94 @@
+
+<!-- saved from url=(0057)https://cs.rit.edu/~jro/courses/intelSys/labs/resolution/ -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Resolution</title>
+</head><body><center><h2>Resolution</h2>
+
+<!-- <h3>Due: 12 Oct 2018, 11:59 PM</h3> -->
+</center>
+
+In this assignment, you will gain insight into resolution by implementing a theorem prover for a subset of first order logic (FOL).  
+
+<h3>Input/Output</h3>
+You will be given a single file encoding a knowledge base (KB) in conjunctive normal form (CNF),<a href="https://cs.rit.edu/~jro/courses/intelSys/labs/resolution/truck.cnf"> for example</a>. The file will first list the predicates, variables, constants, and functions used in the knowledge base. It will then list the clauses on each line with whitespace separating each literal. Negation will be indicated by "!".
+For instance, the clauses may read:
+<p>
+!dog(x0) animal(x0) 
+<br>
+dog(Kim1) 
+</p><p>
+Which represents two clauses:
+</p><p>
+[¬dog(x0), animal(x0)]<br>  
+[dog(Kim1)]
+</p><p>
+Which can be expressed in FOL as:
+</p><p>
+(&#8704; x ¬dog(x) &#8744; animal(x)) &#8743; dog(Kim1)
+</p><p>
+Your program should then determine if the KB is satisfiable and print either, "yes" (it is satisfiable; it cannot find any new clauses) or "no" (it is not satisfiable; it finds the empty clause). For testing purposes, it should not print anything else - please cleanup your debugging output before submitting!
+</p><p>
+Note: This differs slightly from what we typically do in class, you are not converting anything to CNF nor are you taking a query. Assume both of those steps have been done for you and the results are in the .cnf files. All you are doing is trying to derive the empty clause.
+
+</p><h4>Expressiveness</h4>
+You do not have to recognize all FOL expressions. Specifically, your program will not be tested using equality, e.g. "Kim01=Zori11", nor will it be required to handle nested functions. Your program will be tested on FOL at most as expressive as those found in the test cases linked at the bottom of this write up. You do not have to worry about semi-decidability, a proper implementation will halt on all of the test cases (but not on every FOL expressions in general).
+ 
+<h3>Design</h3>
+You must implement resolution which requires you to consider several things:
+<ul>
+  <li>How will you represent the following?</li>
+	<ul>
+		<li><b>Clauses</b>, which are composed of predicates</li>
+		<li><b>Predicates</b>, which could be negated and have several types of arguments</li>
+		<li><b>Terms</b>, which form the arguments for predicates and functions</li>
+			<ul>
+				<li><b>Constants</b></li>
+				<li><b>Variables</b></li>
+				<li><b>Functions</b></li>
+			</ul>
+	</ul>
+	<li>How will you create, store, and compare clauses?
+	</li><li> How will you test that if you have seen a clause before?</li>
+	<li>How will your unification function look?</li>
+		<ul>
+				<li>What must be compared?</li>
+				<li>How do you handle substituting a free variable for one of following?</li>
+				<ul>
+					<li>Another free variable</li>
+					<li>A constant</li>
+					<li>A function</li>
+				</ul>
+				<li>How do you create a new free variable to prevent name conflicts?</li>
+	
+		
+	<li>How will you apply the substitutions to predicates and functions?</li>
+	</ul></ul>
+<p>
+It is suggested you first start by implementing a resolver (<b>Check out PL-Resolution in R&amp;N 7.5 on pg 228 for ideas</b>) that can handle the propositional test cases before moving on to implementing unification (<b>Check out Unify in R&amp;N 9.2 on pg 285 for ideas</b>).
+
+
+</p><h4> I/O Format </h4>
+Name your program 'lab2'. It should take 1 argument, KB.cnf.
+<p>
+e.g. <code> python3 lab2.py testcases/functions/f1.cnf </code>
+</p><p>
+It should then only output <code>yes</code> or <code>no</code>.
+
+</p><h3>Evaluation</h3>
+This lab will primarily be evaluated using test cases. Ensure that any broken code does not affect the other working components of your submission. 
+
+Your score will be based on how many testcases your program passes. These will be broken up into categories with the following weights.
+<ul>
+  <li>Propositional Test Cases: 25%</li>
+  <li>Constants Test Cases: 15%</li>
+  <li>Universal Test Cases: 25%</li>
+  <li>Universal+Constants Test Cases: 15%</li>
+  <li>Functions Test Cases: 20%</li>
+</ul>
+<a href="https://cs.rit.edu/~jro/courses/intelSys/labs/resolution/testcases.zip">These test cases </a> will give you an idea of what each category involves along with sketches for each proof.
+ 
+Since randomly answering "yes" or "no" will give an expected score of 50%, your program must make a good faith effort at a proper implementation in order to receive any points for that category.  To that end, any component scoring less than 70% correct will be marked 0; however, it is eligible for partial credit. To detect stochastic results, <b>your program will be run multiple times and will fail if it ever provides the wrong answers</b>.
+<h3>Submission</h3>
+Name your driver program lab2.py or lab2.java and submit your code through GradeScope.
+
+<div class="cmVhZGVyLWxpbmU cmVhZGVyLWxpbmU--focus" style="--pseudo-background: rgba(0, 0, 0, 0.25); background-color: rgba(0, 0, 0, 0.25); height: 140px; display: none; top: 241px;"></div><div id="hl-aria-live-message-container" aria-live="polite" class="visually-hidden"></div><div id="hl-aria-live-alert-container" role="alert" aria-live="assertive" class="visually-hidden"></div></body></html>
