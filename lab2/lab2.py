@@ -16,7 +16,26 @@ constants = set(lines[2][1:])
 functions = set(lines[3][1:])
 clauses = lines[5:]
 
-clauses = [[predicate[0:-1].split('(',1) for predicate in clause] for clause in clauses]
+temp_clauses = []
+for clause in clauses:
+    temp_clause=[]
+    for predicate in clause:
+        temp_predicate = []
+        predicate = predicate[0:-1].split('(',1)
+        if predicate[0][0] == "!":
+            predicate[0] = predicate[0][1:]
+            predicate.append(False)
+        else:
+            predicate.append(True)
+        predicate[1] = predicate[1].split(',')
+        for argument in predicate[1]:
+            if argument.startswith("SKF"):
+                argument = argument[0:-1].split('(',1)
+            temp_predicate.append(argument)
+        predicate[1] = temp_predicate
+        temp_clause.append(predicate)
+    temp_clauses.append(temp_clause)
+clauses = temp_clauses
 
 print(clauses)
     
