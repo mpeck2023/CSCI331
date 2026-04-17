@@ -1,11 +1,38 @@
 import sys
 import numpy as np
+import pandas as pd
 import pickle
-import matplotlib.pyplot as plt
+import graphviz
+
+# returns tuple (majority classification, count)
+
+def entropy(outcomes):
+    counts = outcomes.value_counts()
+    total = counts.sum()
+    entro = 0.0
+    for count in counts:
+        p = count/total
+        entro += p * np.log2(1/p)
+    return entro
+
+
+def importance(examples, attribute):
+    gain += entropy(examples["outcomes"])
+    for value in pd.unique(examples[attribute]):
+        examples_with_value = examples.loc[examples[attribute] == value]
+        gain -= len(examples_with_value)/len(examples) * entropy(examples_with_value["outcomes"])
+    return gain
+
+def majority_answer(examples):
+    return examples["output"].mode()[0]
 
 class TreeNode:
-    def __init__(self, question):
+    def __init__(self, question = '', entropy = '', counts = '', value = '', outcome = ''):
         self.question = question
+        self.entropy = entropy
+        self.counts = counts
+        self.value = value
+        self.outcome = outcome
         self.children = []
 
     def add_child(self, child_node):
@@ -16,6 +43,28 @@ class TreeNode:
 
     def get_question(self):
         return self.question
+    
+def decision_tree(examples, parent_examples, prev_value=''):
+    if len(examples) == 0:
+        return TreeNode(outcome=majority_answer(parent_examples))
+    
+    if len(pd.unique(examples["output"])) == 1:
+        return TreeNode(outcome=majority_answer(examples))
+    
+    if len(examples.columns) == 0:
+        return TreeNode(outcome=majority_answer(examples))
+    
+    importance_list = pd.Series({a: importance(a,examples) for a in examples.columns})
+    attribute = importance_list.idxmax()
+    counts = examples["outcomes"].value_counts()
+    tree = TreeNode(question=attribute,
+                    entropy=importance_list[attribute],
+                    counts=counts,
+                    value=prev_value)
+    for value in pd.unique(examples[attribute]): # looping through the possible values of attribute A
+        examples_with_value = examples.loc[examples[attribute] == value]
+        tree.add_child(decision_tree(examples_with_value.drop(columns=attribute),examples,value))
+    return tree
 
 def parse_command():
     if len(sys.argv) < 5:
@@ -39,11 +88,11 @@ def get_lines(filename):
         return file.readlines()
     
 def parse_training_data(examples, features):
-    outcomes_examples = [example.split('|') for example in examples]
-    outcomes_examples = np.array(outcomes_examples)
-    Y = outcomes_examples[:,0]
-    examples = outcomes_examples[:,1]
-    data = np.append(parse_data(examples, features), Y, 1)
+    outcomes, examples = [example.split('|') for example in examples]
+    outcomes = np.array(outcomes)
+    examples = np.array(examples)
+    data = np.append(parse_data(examples, features), outcomes, 1)
+    data = pd.DataFrame(data,columns=features+"outcome")
     return data
 
 def parse_data(examples, features):
@@ -53,44 +102,15 @@ def parse_data(examples, features):
 
 def split_train_test(data, test_size = 0.3):
     split = int(test_size*data.shape[0])
-    train_data = data[:split,:]
-    test_data = data[split:,:]
-    X_train = train_data[:,:-1]
-    Y_train = train_data[:,-1]
-    X_test = test_data[:,:-1]
-    Y_test = test_data[:,-1]
-    return X_train, X_test, Y_train, Y_test
-
-# returns tuple (majority classification, count)
-def majority_answer(examples):
-    max((examples)) #replace
-    return
-
-def importance(attribute, examples):
-    return
-
-def decision_tree(examples, attributes, parent_examples):
-    attributes = []
-    if len(examples) == 0:
-        return majority_answer(parent_examples)[0]
-    if majority_answer(examples)[1] == len(examples):
-        return majority_answer(examples)[0]
-    if len(attributes) == 0:
-        return majority_answer(examples)[0]
-    importance_list = [importance(a,examples) for a in attributes]
-    A = np.argmax(importance_list)
-    tree = TreeNode(question=attributes(A))
-    for value in attributes[A]: # looping through the possible values of attribute A
-        examples_with_value = [e for e in examples if e[A] == value]
-        tree.add_child(decision_tree(examples_with_value,attributes[0:A]+attributes[A+1:],examples))
-    return tree
+    train_data = data.iloc[:split]
+    test_data = data.iloc[split:]
+    return train_data, test_data
 
 def train(data, hypothesis_filename, learning_type):
-    X_train, X_test, Y_train, Y_test = split_train_test(data, test_size=0.3)
+    train_data, test_data = split_train_test(data, test_size=0.3)
     with open(hypothesis_filename, 'w') as hypothesis_out:
         return
-    entropy_tree = "Decision tree classifier"
-    entropy_tree.fit(X_train, Y_train)
+    entropy_tree = decision_tree(train_data)
     return entropy_tree
 
 def predict(hypothesis_filename):
@@ -124,7 +144,7 @@ command, examples, features, hypothesis_filename, learning_type = parse_command(
 
 if command == "train":
     data = parse_training_data(examples, features)
-    tree = train(data, hypothesis_filename, learning_type)
+    tree = train(data, features, hypothesis_filename, learning_type)
 else:
     data = parse_data(examples, features)
     prediction = predict(data, hypothesis_filename)
