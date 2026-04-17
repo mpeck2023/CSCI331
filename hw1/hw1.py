@@ -6,7 +6,7 @@ from queue import Queue
 #     sys.exit(1)
 
 # filename,start,target = sys.argv[1:]
-filename,start,target = "words","pussy","penis"
+filename,start,target = "words","ready","minds"
 start,target = start.lower(), target.lower()
 
 if len(start) != len(target):

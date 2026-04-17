@@ -1,40 +1,73 @@
 import sys
 
+#py lab2.py testcases/functions/f1.cnf
+# if len(sys.argv) < 2:
+#     print("Usage: python3 lab2.py KB.cnf")
+#     sys.exit(1)
+
 function = sys.argv[1]
+# function = "lab2/testcases/constants/c03.cnf"
+# function = "lab2/testcases/functions/f1.cnf"
 lines = []
+
+class Term:
+    def __init__(self,name,args=()):
+        self.name = name
+        self.args = args
+
+    def __eq__(self, other):
+        return isinstance(other, Term) and self.name == other.name and self.args == other.args
+
+    def __lt__(self, other):
+        if isinstance(other, Term):
+            if self.name == other.name:
+                return self.args < other.args
+            else:
+                return self.name < other.name
+        
+    def __hash__(self):
+        return hash((self.name, self.args))
+        
+class Clause:
+    def __init__(self, literals):
+        self.literals = set(literals)
+
+    def __iter__(self):
+        return iter(self.literals)
+    
+    def __hash__(self):
+        return hash(tuple(sorted(self.literals)))
 
 with open(function, 'r') as file:
     lines = [line.split() for line in file]
 
 predicates = set(lines[0][1:])
-variables = set((var,()) for var in lines[1][1:])
-constants = set(tuple([con,()]) for con in lines[2][1:])
+variables = set(Term(var) for var in lines[1][1:])
+constants = set(Term(con) for con in lines[2][1:])
 functions = set(lines[3][1:])
 clauses = lines[5:]
 
 def parseTerm(term):
     if "(" not in term:
-        parsed_term = (term, ())
-        return parsed_term
+        return Term(term)
     
     name, args = term.split('(',1)
     args = args[:-1].split(',')
     parsed_args = tuple(parseTerm(arg) for arg in args)
-    parsed_term = (name, parsed_args)
 
-    return parsed_term
+    return Term(name, parsed_args)
 
 def parseClauses(clauses):
     knowledge_base = set()
     for clause in clauses:
-        parsed_clause = set()
+        literals = set()
         for predicate in clause:
-            not_negated = True
+            sign = True
             if predicate.startswith("!"):
                 predicate = predicate[1:]
-                not_negated = False
-            parsed_clause.add((parseTerm(predicate),not_negated))
-        knowledge_base.add(tuple(parsed_clause))
+                sign = False
+            literals.add((parseTerm(predicate), sign))
+        knowledge_base.add(Clause(literals))
     return knowledge_base
 
 #knowledge_base in the form (clause, clause, ...)
@@ -43,33 +76,38 @@ def parseClauses(clauses):
 #term in the form: constant, variable, or (function, (term, term))
 knowledge_base = parseClauses(clauses)
 
+def occurs(var,term):
+    if var == term:
+        return True
+    return any(occurs(var,arg) for arg in term.args)
+
 def unifyVar(var, x, theta):
     if var in theta.keys():
         return unify(theta[var],x,theta)
     elif x in theta.keys():
         return unify(var, theta[x],theta)
-    elif isinstance(x,tuple):
-        if var in x[1]:
-            return None
-    theta[var] = x
-    return theta
+    elif occurs(var,x):
+        return None
+    else:
+        theta[var] = x
+        return theta
     
 def unify(x,y,theta=None):
+    # print("\033[93m{0} {1}".format(x, y)) #print here
     if theta is None:
         theta = {}
     if x == y:
         return theta
     
     elif x in variables:
+        # print("\033[93m{0} in variables".format(x)) #print here
         return unifyVar(x,y,theta)
     elif y in variables:
+        # print("\033[94m{0} in variables".format(x)) #print here
         return unifyVar(y,x,theta)
     
-    elif isinstance(x,tuple) and isinstance(y,tuple):
-        if len(x) == 0 and len(y) == 0:
-            return theta
-        
-        elif len(x) != len(y):
+    elif isinstance(x,Term) and isinstance(y,Term):
+        if x.name != y.name or len(x.args) != len(x.args):
             return None
 
         theta = unify(x[0],y[0],theta)
@@ -84,26 +122,31 @@ def isComplementary(predicate1,predicate2):
     theta = unify(predicate1[0],predicate2[0])
     return theta is not None and predicate1[1]!=predicate2[1], theta
 
-def applyUnification(term, theta):
-    if term in variables or term in constants:
-        return theta.get(term, term)
-    else:
-        name, args = term
-        new_args = tuple(applyUnification(arg,theta) for arg in args)
-        return (name, new_args)
+def apply_unification(term, theta):
+    if term in theta:
+        return theta[term]
+    return Term(term.name, tuple(apply_unification(arg, theta) for arg in term.args))
+
+
+
 
 def resolve(clause1, clause2):
     resolved_clauses = set()
+    # print("\033[0m{0} \033[92m{1}".format(clause1,clause2)) #print here
     for predicate1 in clause1:
         for predicate2 in clause2:
             complementary, theta = isComplementary(predicate1,predicate2)
             if complementary:
                 new_clause = (set(clause1) - {predicate1}) | (set(clause2) - {predicate2})
                 unified_clause = set()
+                # print("\033[91m{0}".format(new_clause)) #print here
                 for predicate, not_negative in new_clause:
-                    unified_predicate = applyUnification(predicate, theta)
+                    unified_predicate = apply_unification(predicate, theta)
                     unified_clause.add((unified_predicate,not_negative))
-                resolved_clauses.add(tuple(unified_clause))
+                # print("\033[94m{0}".format(unified_clause)) #print here
+                resolved_clauses.add(Clause(unified_clause))
+                # print(theta)
+    # print("{0}".format(resolved_clauses)) #print here
     return(resolved_clauses)
                 
 def resolution(knowledge_base):

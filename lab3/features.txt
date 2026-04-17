@@ -1,0 +1,3 @@
+use function words from each language to start
+q
+the
