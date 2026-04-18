@@ -1,0 +1,56 @@
+// A graph
+digraph {
+	the [label="the
+0.4168637396140825
+Y
+nl    820
+en    601
+Name: count, dtype: int64"]
+	Truetheq [label="q
+0.003252716147914947
+Y
+en    429
+nl     28
+Name: count, dtype: int64"]
+	the -> Truetheq [label=True]
+	FalseTruetheqcame [label="came
+0.0023915175172267156
+Y
+en    413
+nl     28
+Name: count, dtype: int64"]
+	Truetheq -> FalseTruetheqcame [label=False]
+	FalseFalseTruetheqcameen [label=en]
+	FalseTruetheqcame -> FalseFalseTruetheqcameen [label=False]
+	TrueFalseTruetheqcameen [label=en]
+	FalseTruetheqcame -> TrueFalseTruetheqcameen [label=True]
+	TrueTruetheqen [label=en]
+	Truetheq -> TrueTruetheqen [label=True]
+	Falsetheq [label="q
+0.0022273065683900486
+Y
+nl    792
+en    172
+Name: count, dtype: int64"]
+	the -> Falsetheq [label=False]
+	FalseFalsetheqcame [label="came
+0.0008425510492073916
+Y
+nl    778
+en    165
+Name: count, dtype: int64"]
+	Falsetheq -> FalseFalsetheqcame [label=False]
+	FalseFalseFalsetheqcamenl [label=nl]
+	FalseFalsetheqcame -> FalseFalseFalsetheqcamenl [label=False]
+	TrueFalseFalsetheqcameen [label=en]
+	FalseFalsetheqcame -> TrueFalseFalsetheqcameen [label=True]
+	TrueFalsetheqcame [label="came
+0.0
+Y
+nl    14
+en     7
+Name: count, dtype: int64"]
+	Falsetheq -> TrueFalsetheqcame [label=True]
+	FalseTrueFalsetheqcamenl [label=nl]
+	TrueFalsetheqcame -> FalseTrueFalsetheqcamenl [label=False]
+}

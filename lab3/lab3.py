@@ -6,8 +6,8 @@ import graphviz
 
 # returns tuple (majority classification, count)
 
-def entropy(outcomes):
-    counts = outcomes.value_counts()
+def entropy(Y):
+    counts = Y.value_counts()
     total = counts.sum()
     entro = 0.0
     for count in counts:
@@ -17,53 +17,60 @@ def entropy(outcomes):
 
 
 def importance(examples, attribute):
-    gain += entropy(examples["outcomes"])
+    gain = entropy(examples['Y'])
     for value in pd.unique(examples[attribute]):
         examples_with_value = examples.loc[examples[attribute] == value]
-        gain -= len(examples_with_value)/len(examples) * entropy(examples_with_value["outcomes"])
+        gain -= len(examples_with_value)/len(examples) * entropy(examples_with_value['Y'])
     return gain
 
-def majority_answer(examples):
-    return examples["output"].mode()[0]
-
 class TreeNode:
-    def __init__(self, question = '', entropy = '', counts = '', value = '', outcome = ''):
+    def __init__(self, question = '', entropy = '', counts = '', outcome = '', edge = ''):
         self.question = question
         self.entropy = entropy
         self.counts = counts
-        self.value = value
         self.outcome = outcome
+        self.edge = edge
         self.children = []
 
     def add_child(self, child_node):
-        self.child_node = child_node
+        self.children.append(child_node)
 
-    def get_children(self):
-        return self.children
-
+    def __str__(self):
+        return self.question + '\n' + str(self.entropy) + '\n' + str(self.counts)
     def get_question(self):
         return self.question
+    def get_edge(self):
+        return self.edge
+    def get_outcome(self):
+        return self.outcome
+    def get_children(self):
+        return self.children
     
-def decision_tree(examples, parent_examples, prev_value=''):
+def majority_answer(examples):
+    return examples['Y'].mode()[0]
+    
+def decision_tree(examples, attributes, parent_examples=None,edge_label=None):
     if len(examples) == 0:
-        return TreeNode(outcome=majority_answer(parent_examples))
+        return TreeNode(outcome=majority_answer(parent_examples,edge=edge_label))
     
-    if len(pd.unique(examples["output"])) == 1:
-        return TreeNode(outcome=majority_answer(examples))
+    if len(pd.unique(examples['Y'])) == 1:
+        return TreeNode(outcome=majority_answer(examples),edge=edge_label)
+
+    if attributes == []:
+        return TreeNode(outcome=majority_answer(examples),edge=edge_label)
     
-    if len(examples.columns) == 0:
-        return TreeNode(outcome=majority_answer(examples))
-    
-    importance_list = pd.Series({a: importance(a,examples) for a in examples.columns})
+    importance_list = pd.Series({a: importance(examples,a) for a in attributes})
+    print(importance_list)
     attribute = importance_list.idxmax()
-    counts = examples["outcomes"].value_counts()
+    counts = examples['Y'].value_counts()
     tree = TreeNode(question=attribute,
                     entropy=importance_list[attribute],
                     counts=counts,
-                    value=prev_value)
+                    edge=edge_label)
     for value in pd.unique(examples[attribute]): # looping through the possible values of attribute A
         examples_with_value = examples.loc[examples[attribute] == value]
-        tree.add_child(decision_tree(examples_with_value.drop(columns=attribute),examples,value))
+        print(attribute)
+        tree.add_child(decision_tree(examples=examples_with_value.drop(columns=attribute),attributes=[a for a in attributes if a != attribute],parent_examples=examples,edge_label=value))
     return tree
 
 def parse_command():
@@ -84,15 +91,16 @@ def parse_command():
     return command, examples, features, hypothesis_filename, learning_type
 
 def get_lines(filename):
-    with open(filename, 'r') as file:
-        return file.readlines()
+    with open(filename, 'r', encoding='utf-8') as file:
+        return [line.strip() for line in file.readlines()]
     
 def parse_training_data(examples, features):
-    outcomes, examples = [example.split('|') for example in examples]
-    outcomes = np.array(outcomes)
-    examples = np.array(examples)
-    data = np.append(parse_data(examples, features), outcomes, 1)
-    data = pd.DataFrame(data,columns=features+"outcome")
+    Y_examples = np.array([example.split('|') for example in examples])
+    Y = Y_examples[:,0]
+    examples = Y_examples[:,1]
+    data = np.column_stack((parse_data(examples, features), Y))
+    data = pd.DataFrame(data,columns=features+['Y'])
+    print(data)
     return data
 
 def parse_data(examples, features):
@@ -106,49 +114,40 @@ def split_train_test(data, test_size = 0.3):
     test_data = data.iloc[split:]
     return train_data, test_data
 
-def train(data, hypothesis_filename, learning_type):
+def train(data, features, hypothesis_filename, learning_type):
     train_data, test_data = split_train_test(data, test_size=0.3)
-    with open(hypothesis_filename, 'w') as hypothesis_out:
-        return
-    entropy_tree = decision_tree(train_data)
-    return entropy_tree
+    # with open(hypothesis_filename, 'w', encoding='utf-8') as hypothesis_out:
+    return decision_tree(examples=train_data,attributes=features)
 
 def predict(hypothesis_filename):
     with open(hypothesis_filename, 'r') as hypothesis_file:
         hypothesis = pickle.load(hypothesis_file)
     return
 
-def plot_tree(node, ax, x_axis=0, y_axis=10, space=5):
-    if node.label is not None:
-        ax.text(x_axis, y_axis, node.label, 
-                bbox=dict(boxstyle='round', facecolor='green', edgecolor='g'), 
-                ha='center', va='center')
+def build_tree(dot,node,prev_label=None):
+    node_label = ''
+    if node.get_question() == '':
+        node_label = node.get_edge()+prev_label+node.get_outcome()
+        dot.node(node_label, node.get_outcome())
     else:
-        ax.text(x_axis, y_axis, f'{node.value:.2f}\nidx:{node.feature_idx}', 
-                bbox=dict(boxstyle='round', facecolor='red', edgecolor='r'), 
-                ha='center', va='center')
-    
-    if node.left:
-        plot_tree(node.left, ax, x_axis - space, y_axis - space)
-    if node.right:
-        plot_tree(node.right, ax, x_axis + space, y_axis - space)
+        node_label = node.get_edge()+prev_label+node.get_question() if (node.get_edge()!=None) else node.get_question()
+        dot.node(node_label, str(node))
+    if prev_label != None:
+        dot.edge(prev_label,node_label,label = node.get_edge())
+    for child_node in node.get_children():
+        build_tree(dot,child_node,node_label)
 
-def plot_decision_tree(entropy_tree, feature_names, class_names):
-    fig, ax = plt.subplots(1, 1)
-    ax.axis('off')
-    ax.set_aspect('equal')
-    plot_tree(entropy_tree, ax)
-    plt.show()
+def plot_tree(node):
+    dot = graphviz.Digraph(comment="A graph", format="svg")
+    build_tree(dot,node)
+    dot.render('digraph.gv', view=True) 
 
 command, examples, features, hypothesis_filename, learning_type = parse_command()
 
 if command == "train":
     data = parse_training_data(examples, features)
     tree = train(data, features, hypothesis_filename, learning_type)
+    plot_tree(tree)
 else:
     data = parse_data(examples, features)
     prediction = predict(data, hypothesis_filename)
-
-class_names = list(map(str, np.unique(Y)))
-
-plot_decision_tree(tree, features, class_names)
